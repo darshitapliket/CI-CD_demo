@@ -23,6 +23,11 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.16.0"
+          cache: true
+
+      # 🔥 VERY IMPORTANT (CI hang fix)
+      - name: Disable Flutter analytics
+        run: flutter config --no-analytics
 
       - name: Install dependencies
         run: flutter pub get
@@ -30,18 +35,17 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
-      - name: Install Google Drive CLI
+      - name: Install Google Drive dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-pip
-          pip3 install gdown google-api-python-client oauth2client
+          python3 -m pip install --upgrade pip
+          pip3 install google-api-python-client google-auth google-auth-httplib2
 
       - name: Upload APK to Google Drive
         env:
           GDRIVE_CREDENTIALS: ${{ secrets.CD_CD_DEMO }}
           GDRIVE_FOLDER_ID: ${{ secrets.CD_CD_DEMO_ID }}
         run: |
-          echo "$CD_CD_DEMO" > credentials.json
+          echo "$GDRIVE_CREDENTIALS" > credentials.json
 
           python3 <<EOF
           from google.oauth2 import service_account
@@ -55,7 +59,7 @@ jobs:
           service = build('drive', 'v3', credentials=creds)
 
           file_metadata = {
-              'name': 'app-release.apk',
+              'name': 'app-release-${{ github.run_number }}.apk',
               'parents': ['${{ secrets.CD_CD_DEMO_ID }}']
           }
 
